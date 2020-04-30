@@ -59,7 +59,7 @@ class Compound:
         return squareform(pdist(coordinates, lambda a, b: np.sqrt(np.sum((a - b) ** 2))))
 
     def zero_padding(self):
-        n_molecules = self.representation.shape[0]
+        n_molecules = len(self.representation)
         padded_representation = np.zeros((n_molecules, self.max_natoms, self.max_natoms))
         for i, matrix in enumerate(self.representation):
             n_atoms = matrix.shape[0]
@@ -73,3 +73,11 @@ class Compound:
         with open(energy_file) as infile:
             lines = infile.readlines()
         return np.array([float(line.split()[1]) for line in lines])
+
+
+if __name__ == '__main__':
+    from glob import glob
+    qm7_files = sorted(glob('qm7/xyz/*.xyz'))
+    c = Compound(qm7_files)
+    representation = c.get_representation()
+    energies = c.get_labels('qm7/energies.txt')
