@@ -68,3 +68,8 @@ class Compound:
 
     def get_representation(self):
         return self.zero_padding()
+
+    def get_labels(self, energy_file):
+        with open(energy_file) as infile:
+            lines = infile.readlines()
+        return np.array([float(line.split()[1]) for line in lines])
