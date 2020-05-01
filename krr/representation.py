@@ -41,7 +41,7 @@ class Compound:
             coords.append([x, y, z])
         return np.array(coords).astype('float'), elements
 
-    def get_coulomb_matrix(self, coords, nuclear_charge, sorting='norm-row'):
+    def get_coulomb_matrix(self, coords, nuclear_charge, sorting='norm-row', vectorize=True):
         inv_dist = 1/self.calculate_distances(coords)
         # First, calculate the off diagonals
         zizj = nuclear_charge[None, :]*nuclear_charge[:, None]
@@ -52,6 +52,9 @@ class Compound:
         if sorting == 'norm-row':
             idx_list = np.argsort(np.linalg.norm(coulomb_matrix, axis=1))
             coulomb_matrix = coulomb_matrix[idx_list][:, idx_list]
+        if vectorize:
+            triu_idx = np.triu_indices_from(coulomb_matrix)
+            coulomb_matrix = coulomb_matrix[triu_idx]
 
         return coulomb_matrix
 
@@ -60,10 +63,11 @@ class Compound:
 
     def zero_padding(self):
         n_molecules = len(self.representation)
-        padded_representation = np.zeros((n_molecules, self.max_natoms, self.max_natoms))
+        vec_size, _ = np.triu_indices(self.max_natoms)
+        padded_representation = np.zeros((n_molecules, vec_size.shape[0]))
         for i, matrix in enumerate(self.representation):
             n_atoms = matrix.shape[0]
-            padded_representation[i, :n_atoms, :n_atoms] = matrix
+            padded_representation[i, :n_atoms] = matrix
         return padded_representation
 
     def get_representation(self):
