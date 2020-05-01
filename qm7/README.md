@@ -8,3 +8,8 @@ It contains atomization energies and relaxed geometries at PBE0/def2-TZVP level 
 # Data Source
 
 The data was taken from the [QML Tutorial](https://github.com/qmlcode/tutorial).
+
+
+# Energies.txt
+
+Second row is atomization energy, third row are some delta energies for the qml tutorial.
