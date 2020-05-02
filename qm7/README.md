@@ -13,3 +13,4 @@ The data was taken from the [QML Tutorial](https://github.com/qmlcode/tutorial).
 # Energies.txt
 
 Second row is atomization energy, third row are some delta energies for the qml tutorial.
+Unit: kcal/mol
