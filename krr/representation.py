@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 class Compound:
@@ -42,7 +42,8 @@ class Compound:
         return np.array(coords).astype('float'), elements
 
     def get_coulomb_matrix(self, coords, nuclear_charge, sorting='norm-row', vectorize=True):
-        inv_dist = 1/self.calculate_distances(coords)
+        with np.errstate(divide='ignore'):  # ignore the dividing by 0 warning
+            inv_dist = 1/self.calculate_distances(coords)
         # First, calculate the off diagonals
         zizj = nuclear_charge[None, :]*nuclear_charge[:, None]
         np.fill_diagonal(inv_dist, 0)  # to get rid of nasty NaNs

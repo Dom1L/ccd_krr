@@ -1,11 +1,12 @@
 import numpy as np
+from tqdm.auto import tqdm
 import numba
 
 
 def learning_curve(subsets, training_features, training_labels, testing_features, testing_labels, train_sigma,
                    train_lambda):
     mae_subsets = []
-    for subset in subsets:
+    for subset in tqdm(subsets):
         prediction = kernel_training(x_train=training_features[:subset],
                                      y_train=training_labels[:subset],
                                      x_test=testing_features,
@@ -34,49 +35,41 @@ def create_split_idx(dataset_size, train_size=0.8, seed=1337):
     return train_idx, test_idx
 
 
+def kernel_training(x_train, y_train, x_test, train_sigma, train_lambda):
+    train_kernel, train_sigma = laplacian_kernel(x_train, x_train, train_sigma)
+    train_kernel[np.diag_indices_from(train_kernel)] += train_lambda
+    alpha = cho_solve(train_kernel, y_train)
+
+    # calculate a kernel matrix between test and training data, using the same sigma
+    test_kernel, _ = laplacian_kernel(x_test, x_train, train_sigma)
+
+    # Make the predictions
+    y_pred = kernel_prediction(test_kernel, alpha)
+    return y_pred
+
+
 @numba.njit(fastmath=True)
 def laplacian_kernel(a, b, sigma=None):
-    a_size = a.shape[0]
-    b_size = b.shape[0]
-    K = np.ones((a_size, b_size))
-    i_ind, j_ind = np.triu_indices(n=a_size, m=b_size, k=1)
-    i_lower = np.tril_indices(n=a_size, m=b_size, k=-1)
-    l1_norm = np.array(manhattan_norm(a, b, i_ind, j_ind))
-    if not sigma:
-        inv_sigma = -1 / np.max(l1_norm) / np.log(2)
-    else:
-        inv_sigma = -1 / sigma
-    kernel_values = np.exp(l1_norm * inv_sigma)
-    K[i_ind, j_ind] = kernel_values
-    K[i_lower] = K.T[i_lower]
-    return K
+    l1_norm = manhattan_norm(a, b)
+    if sigma is None:
+        sigma = np.max(l1_norm) / np.log(2)
+    return np.exp(-1 * (l1_norm / sigma)),  sigma
 
 
 @numba.njit(fastmath=True)
-def manhattan_norm(a, b, i_ind, j_ind):
-    l1_norm = []
-    for i, j in zip(i_ind, j_ind):
-        l1_norm.append(np.sum(np.abs(a[i] - b[j])))
+def manhattan_norm(a, b):
+    a_size = a.shape[0]
+    b_size = b.shape[0]
+    l1_norm = np.ones((a_size, b_size))
+    for i in range(a_size):
+        for j in range(b_size):
+            l1_norm[i, j] = np.sum(np.abs(a[i] - b[j]))
     return l1_norm
 
 
 @numba.njit(fastmath=True)
 def cho_solve(kernel, y):
     return np.sum(np.linalg.inv(kernel) * y, axis=1)
-
-
-@numba.njit(fastmath=True)
-def kernel_training(x_train, y_train, x_test, train_sigma, train_lambda):
-    train_kernel = laplacian_kernel(x_train, x_train, train_sigma)
-    train_kernel[np.diag_indices_from(train_kernel)] += train_lambda
-    alpha = cho_solve(train_kernel, y_train)
-
-    # calculate a kernel matrix between test and training data, using the same sigma
-    test_kernel = laplacian_kernel(x_test, x_train, train_sigma)
-
-    # Make the predictions
-    y_pred = kernel_prediction(test_kernel, alpha)
-    return y_pred
 
 
 @numba.njit(fastmath=True)
