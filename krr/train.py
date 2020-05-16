@@ -48,7 +48,25 @@ def kernel_training(x_train, y_train, x_test, train_sigma, train_lambda):
     return y_pred
 
 
-@numba.njit(fastmath=True)
+def rkernel_training(x_train, y_train, x_test, train_sigma, train_lambda, delta):
+    train_kernel, train_sigma = laplacian_kernel(x_train, x_train, train_sigma)
+    train_kernel[np.diag_indices_from(train_kernel)] += train_lambda
+    alpha = cho_solve(train_kernel, y_train)
+
+    # calculate a kernel matrix between test and training data, using the same sigma
+    test_kernel, _ = laplacian_kernel(x_test, x_train, train_sigma)
+
+    # Make the predictions
+    y_pred = kernel_prediction(test_kernel, alpha)
+    train_kernel_dp, _ = laplacian_kernel(x_train[:, 0]+delta, x_train, train_sigma)
+    train_kernel_dm, _ = laplacian_kernel(x_train[:, 0]-delta, x_train, train_sigma)
+    y_train_dp = kernel_prediction(train_kernel_dp, alpha)
+    y_train_dm = kernel_prediction(train_kernel_dm, alpha)
+
+    return y_pred, y_train_dp, y_train_dm
+
+
+#@numba.njit(fastmath=True)
 def laplacian_kernel(a, b, sigma=None):
     l1_norm = manhattan_norm(a, b)
     if sigma is None:
@@ -56,7 +74,7 @@ def laplacian_kernel(a, b, sigma=None):
     return np.exp(-1 * (l1_norm / sigma)),  sigma
 
 
-@numba.njit(fastmath=True)
+#@numba.njit(fastmath=True)
 def manhattan_norm(a, b):
     a_size = a.shape[0]
     b_size = b.shape[0]
@@ -67,12 +85,12 @@ def manhattan_norm(a, b):
     return l1_norm
 
 
-@numba.njit(fastmath=True)
+#@numba.njit(fastmath=True)
 def cho_solve(kernel, y):
     return np.sum(np.linalg.inv(kernel) * y, axis=1)
 
 
-@numba.njit(fastmath=True)
+#@numba.njit(fastmath=True)
 def kernel_prediction(kernel, alpha):
     return np.dot(kernel, alpha)
 
